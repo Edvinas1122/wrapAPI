@@ -1,0 +1,28 @@
+{
+  "name": "api_wrapper",
+  "version": "0.1.0",
+  "description": "an API wrapper for fetching data from multiple or single API",
+  "main": "dist/api_wrapper.js",
+  "types": "dist/api_wrapper.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Edvinas1122/wrapAPI.git"
+  },
+  "keywords": [
+    "api_wrapper",
+    "api_fetcher"
+  ],
+  "author": "Edvinas Momkus",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Edvinas1122/wrapAPI/issues"
+  },
+  "homepage": "https://github.com/Edvinas1122/wrapAPI#readme",
+  "devDependencies": {
+    "typescript": "^5.1.6"
+  }
+
+}
