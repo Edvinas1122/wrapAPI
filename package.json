@@ -1,6 +1,6 @@
 {
   "name": "@edvinas1122/api_wrapper",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.3",
   "description": "an API wrapper for fetching data from multiple or single API",
   "main": "dist/api_wrapper.js",
   "types": "dist/api_wrapper.d.ts",
