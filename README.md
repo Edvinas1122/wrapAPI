@@ -2,12 +2,12 @@
 
 npm page: https://www.npmjs.com/package/@edvinas1122/api_wrapper
 
-# wrapAPI
-
 `api_wrapper` is a simple wrapper that lets explicitly define API endpoints in a configuration file.
 
-It is an API layer abstraction. It can also be referred as an api fetcher.
-Currently templated fetch method has limited modularity. And default parameters can not be 
+It is an API layer abstraction.
+An Updated 3rd alpha version autogenerates methods from endpoints.
+
+If you interested in api wrapping, generating automated tests, documentation, check swagger api [here](https://swagger.io/). This project meant to be learning.
 
 ## Installation
 
@@ -19,7 +19,7 @@ npm i @edvinas1122/api_wrapper
 
 ## Initialising
 
-To initialize wrapper follow this configuration pattern. Recommended api_service_name.conf.ts
+To initialize wrapper follow this configuration pattern. Recommended api.conf.ts
 
 ```tsx
 export enum NotionEndpoints {
@@ -72,13 +72,21 @@ export default class NotionAPI extends API<NotionEndpoints> {
 To use the new api wrapper 
 
 ```tsx
+notionAPI.getPage({
+			params: { pageId: "here goes notion page" },
+		});
+```
+
+An old way of alpha 2 interaction
+
+```tsx
 notionAPI.interact({endpoint_name: NotionEndpoints.getPage, params:{pageId: "notion_page_id_here"}});
 ```
 
-Or create a custom controller
+Adjust interaction with a custom service wrapper
 
 ```tsx
-import NotionAPI, { NotionEndpoints } from "notionAPIV1";
+import NotionAPI from "./api";
 
 export default class NotionService {
 	constructor(
@@ -86,21 +94,16 @@ export default class NotionService {
 	) {}
 
 	async getPage(pageId?: string) {
-        return this.api.interact({
-            endpoint_name: NotionEndpoints.getPage,
-            params: pageId ? { pageId: pageId } : undefined,
-        });
-    }
+		return this.api.getPage({
+			params: pageId ? { pageId: pageId } : undefined,
+		});
+	}
 
-    async search(query: string) {
-        return this.api.interact({
-            endpoint_name: NotionEndpoints.search,
-            body: {
-                query: query,
-            },
-        });
-    }
-}
+	async getDatabase(databaseId?: string) {
+		return this.api.getDatabase({
+			params: databaseId ? { databaseId: databaseId } : undefined,
+		});
+	}
 ```
 
 ## Features
@@ -162,7 +165,7 @@ sort: {
 },
 ```
 
-### Multiple APIs per one wrapper
+### Multiple APIs per one wrapper (Deprecated since alpha 2)
 
 Possibility to set an array of API definitions and interact through a same wrapper.
 
