@@ -1,41 +1,9 @@
 /*
-	an API wrapper for fetching data from multiple APIs
-	has unimplemented caching or modular fetching // coudl be implemented with a fetch wrapper
+	API wrapper for automatic method generation.
 
-	usage:
-	1. create an API instance with a list of APIInfo
-	2. interact with the API instance with interact function
-	3. interact function takes in an object with apiName, endpoint_name, body
-	4. apiName is optional, if not provided, the first API will be used
-	5. endpoint_name is required, it is the name of the endpoint
-	6. body is optional, it is the body of the request
-	7. interact function returns a promise with the response data
-	8. the response data is the json data returned from the endpoint
-
-	example:
-	const apiConfig: APIInfo = {
-		name: 'api1',
-		apiBaseUrl: 'https://api1.com',
-		headers: {
-			'Authorization': `Bearer ${authToken}`,
-		}
-		endpoints: [
-			{ name: 'endpoint1', path: '/endpoint1', method: 'GET' },
-			{ name: 'endpoint2', path: '/endpoint2', method: 'POST' },
-		],
-	};
-	const api = new API(apiConfig);
-
-	also default params can be set for each endpoint
-	
-	example:
-	apiConfig.defaultParams = {
-		endpoint1: {
-			params: { param1: 'value1' },
-			body: { body1: 'value1' },
-		}
-	};
-
+	A naive simple use for wrapping api endpoints
+	swagger is a better solution for more complex apis
+	but this is a research project.
 
 */
 
@@ -45,7 +13,7 @@ interface APIFetcherConfig {
 	fetchAdapter?: (url: string, params: any) => Promise<any>;
 	caching?: boolean;
 	headers?: any;
-	endpoints?: Endpoint[];
+	endpoints: Endpoint[];
 	defaultParams?: DefaultParams;
 }
 
@@ -146,62 +114,47 @@ export interface DefaultParams {
 }
 
 export interface APIInfo {
-	name?: string;
 	apiBaseUrl: string;
 	headers?: Record<string, string>; // include auth way
 	endpoints: Endpoint[];
 	defaultParams?: DefaultParams;
 }
 
+type EndpointMethod = {
+	(options: { body?: any; params?: Record<string, string | number> }): Promise<any>;
+  };
+
 export default class API<EndpointEnum extends string | undefined = string> {
-	private apis: Record<string, APIFetcher>;
+	private api: APIFetcher;
+	[key: string]: EndpointMethod | any; // Index signature
 
-	constructor(
-		apiInfo: APIInfo
-	);
-	constructor(
-		apiInfos: Record<string, APIInfo>
-	);
-	constructor(
-		apiInfoOrInfos: APIInfo | Record<string, APIInfo>
-	) {
-		this.apis = {};
-		const apiInfos = this.handleType(apiInfoOrInfos);
+	constructor(apiInfo: APIInfo) {
+		this.api = new APIFetcher({
+			apiBaseUrl: apiInfo.apiBaseUrl,
+			headers: apiInfo.headers,
+			endpoints: apiInfo.endpoints,
+			defaultParams: apiInfo.defaultParams,
+		});
 
-		Object.entries(apiInfos).forEach(([key, apiInfo]) => {
-			this.apis[key] = new APIFetcher({
-				apiBaseUrl: apiInfo.apiBaseUrl,
-				headers: apiInfo.headers,
-				endpoints: apiInfo.endpoints,
-				defaultParams: apiInfo.defaultParams,
-			});
+		// Automatically assign methods based on the endpoint names
+		apiInfo.endpoints.forEach((endpoint) => {
+			this[endpoint.name as string] = this.createEndpointMethod(endpoint.name as EndpointEnum);
 		});
 	}
 
-	public async interact({
-		apiName,
-		endpoint_name,
-		body,
-		params,
-	}: {
-		apiName?: string,
-		endpoint_name: EndpointEnum,
-		body?: any,
-		params?: Record<string, string | number>,
-	}): Promise<any> {
-		const theApiName = apiName || Object.keys(this.apis)[0];
-		const api = this.apis[theApiName];
-		return await api.fetchData({
-			endpoint: endpoint_name,
+	private createEndpointMethod(endpointName: EndpointEnum) {
+		return async ({
 			body,
 			params,
-		});
-	}
-
-	private handleType(apiInfoOrInfos: APIInfo | Record<string, APIInfo>): Record<string, APIInfo> {
-		if ('apiBaseUrl' in apiInfoOrInfos) {
-			return { default: apiInfoOrInfos as APIInfo };
-		}
-		return apiInfoOrInfos as Record<string, APIInfo>;
+		}: {
+			body?: any,
+			params?: Record<string, string | number>,
+		}): Promise<any> => {
+			return await this.api.fetchData({
+				endpoint: endpointName,
+				body,
+				params,
+			});
+		};
 	}
 }
