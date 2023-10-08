@@ -55,10 +55,12 @@ class APIFetcher {
 		endpoint = '',
 		body,
 		params,
+		other,
 	}: {
 		endpoint?: string,
 		body?: any,
 		params?: Record<string, string | number>,
+		other?: any,
 	} = {}): Promise<any>
 	{
 		const defaultParams = this.defaultParams[endpoint] || {};
@@ -69,14 +71,20 @@ class APIFetcher {
 		}
 		const filledEndpoint = this.fillEndpointParams(theEndpoint.path, endpointParams);
 		const requestBody = this.setRequestBody(theEndpoint.name, body);
-		const response = await this.fetch(`${this.apiBaseUrl}${filledEndpoint}`, {
+		let fetchParams = {
 			method: theEndpoint.method,
 			headers: this.headers,
-			cache: 'no-store',
-			body: theEndpoint.method !== 'GET' ? JSON.stringify(requestBody): undefined,
-		});
-		const data = response.json();
-		return data;
+			...other,
+		};
+		// console.log(requestBody);
+		if (theEndpoint.method !== 'GET' && requestBody) {
+			fetchParams = {
+				...fetchParams,
+				body: JSON.stringify(requestBody),
+			};
+		}
+		const response = await this.fetch(`${this.apiBaseUrl}${filledEndpoint}`, fetchParams);
+		return response.json();
 	}
 
 	private fillEndpointParams(endpoint: string, params: Record<string, string | number> = {}): string {
@@ -101,7 +109,7 @@ class APIFetcher {
 interface Endpoint {
 	name: string;
 	path: string;
-	method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 	body?: any;
 	params?: Record<string, string | number>; // path parameters
 }
@@ -118,6 +126,7 @@ export interface APIInfo {
 	headers?: Record<string, string>; // include auth way
 	endpoints: Endpoint[];
 	defaultParams?: DefaultParams;
+	fetchAdapter?: (url: string, params: any) => Promise<any>;
 }
 
 type EndpointMethod = {
@@ -134,6 +143,7 @@ export default class API<EndpointEnum extends string | undefined = string> {
 			headers: apiInfo.headers,
 			endpoints: apiInfo.endpoints,
 			defaultParams: apiInfo.defaultParams,
+			fetchAdapter: apiInfo.fetchAdapter,
 		});
 
 		// Automatically assign methods based on the endpoint names
@@ -146,14 +156,17 @@ export default class API<EndpointEnum extends string | undefined = string> {
 		return async ({
 			body,
 			params,
+			other,
 		}: {
 			body?: any,
 			params?: Record<string, string | number>,
+			other?: any,
 		}): Promise<any> => {
 			return await this.api.fetchData({
 				endpoint: endpointName,
 				body,
 				params,
+				other,
 			});
 		};
 	}
