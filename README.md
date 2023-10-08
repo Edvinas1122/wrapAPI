@@ -5,7 +5,6 @@ npm page: https://www.npmjs.com/package/@edvinas1122/api_wrapper
 `api_wrapper` is a simple wrapper that lets explicitly define API endpoints in a configuration file.
 
 It is an API layer abstraction.
-An Updated 3rd alpha version autogenerates methods from endpoints.
 
 If you interested in api wrapping, generating automated tests, documentation, check swagger api [here](https://swagger.io/). This project meant to be learning.
 

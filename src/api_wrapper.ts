@@ -84,6 +84,7 @@ class APIFetcher {
 			};
 		}
 		const response = await this.fetch(`${this.apiBaseUrl}${filledEndpoint}`, fetchParams);
+		// console.log(response);
 		return response.json();
 	}
 

@@ -1,7 +1,7 @@
 {
   "name": "@edvinas1122/api_wrapper",
-  "version": "1.0.0-alpha.3",
-  "description": "an API wrapper for fetching data from multiple or single API",
+  "version": "1.0.0-alpha.4",
+  "description": "class offering generating API endpoint fetch methods",
   "main": "dist/api_wrapper.js",
   "types": "dist/api_wrapper.d.ts",
   "scripts": {
