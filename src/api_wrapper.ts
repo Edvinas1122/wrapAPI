@@ -16,6 +16,81 @@ interface APIFetcherConfig {
 	endpoints: Endpoint[];
 	defaultParams?: DefaultParams;
 	logging?: boolean;
+	retryTimes?: number;
+}
+
+class FetchHandler {
+	private data: any;
+	constructor(
+		private fetchMethod: () => Promise<any>,
+		private retryTimes: number,
+		private logging: boolean,
+	){}
+	
+	public async fetch(): Promise<any> {
+		if (this.data) {
+			return this.data;
+		}
+		const response = await this.fetchMethod();
+		if (this.logging) {
+			console.log('response', response);
+		}
+		if (!response.ok) {
+			if (response.status === 429) {
+				const retryAfter = response.headers.get('Retry-After');
+				if (!retryAfter) {
+					throw new Error(`APIFetcher - retry parse failure: ${response.status} ${response?.statusText}`);
+				}
+				return this.retryRecursively(response, retryAfter, this.retryTimes);
+			}
+			throw new Error(`APIFetcher: ${response.status} ${response?.statusText}`);
+		}
+		return this.getResponseObject(response);
+	}
+
+	private async retryRecursively(response: Response, retryAfter: number, retryCount: number): Promise<any> {
+		if (retryCount > 0) {
+			await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+			const response = await this.fetchMethod();
+			if (response.ok) {
+				return this.getResponseObject(response);
+			}
+			if (response.status === 429) {
+				const retryAfter = response.headers.get('Retry-After');
+				if (retryAfter) {
+					const retryAfterSeconds = parseInt(retryAfter, 10);
+					return this.retryRecursively(response, retryAfterSeconds, retryCount - 1);
+				}
+			}
+		}
+	}
+
+	private async getResponseObject(response: Response): Promise<any> {
+		const contentType = response.headers.get('content-type');
+		if (this.logging) {
+			console.log('contentType', contentType);
+		}
+		if (contentType && contentType.indexOf('application/json') !== -1) {
+			if (this.logging) {
+				console.log('json');
+			}
+			try {
+				return await response.json();
+			} catch (e: any) {
+				if (this.logging) {
+					console.log("BU", response.bodyUsed);
+					console.error('json parse error', response);
+				}
+				if (response?.bodyUsed) { // not sure about this
+					if (this.logging) {
+						console.log('body used', response);
+					}
+				}
+				return null;
+			}
+		}
+		return await response.text();
+	}
 }
 
 class APIFetcher {
@@ -26,6 +101,7 @@ class APIFetcher {
 	private	endpoints: Record<string, Endpoint>;
 	private defaultParams: DefaultParams;
 	private logging: boolean;
+	private retryTimes: number = 5;
 
 	constructor({
 		apiBaseUrl = '',
@@ -36,6 +112,7 @@ class APIFetcher {
 		endpoints = [],
 		defaultParams = {},
 		logging = false,
+		retryTimes = 5,
 	}: APIFetcherConfig) {
 		this.apiBaseUrl = apiBaseUrl;
 		this.fetch = fetchAdapter || this.fetchDefault;
@@ -48,6 +125,7 @@ class APIFetcher {
 			}, {});
 		this.defaultParams = defaultParams;
 		this.logging = logging;
+		this.retryTimes = retryTimes;
 	}
 
 	private async fetchDefault(url: string, params: any): Promise<any> {
@@ -86,22 +164,12 @@ class APIFetcher {
 				body: JSON.stringify(requestBody),
 			};
 		}
-		const response = await this.fetch(`${this.apiBaseUrl}${filledEndpoint}`, fetchParams);
-		if (this.logging) {
-			this.logMethod(theEndpoint.method, filledEndpoint, requestBody, response);
-		}
-		if (!response.ok) {
-			if (response.status === 429) {
-				const retryAfter = response.headers.get('Retry-After');
-				if (retryAfter) {
-					const retryAfterSeconds = parseInt(retryAfter, 10);
-					await new Promise((resolve) => setTimeout(resolve, retryAfterSeconds * 1001));
-					return this.fetchData({ endpoint, body, params, other });
-				}
-			}
-			throw new Error(`APIFetcher: ${response.status} ${response?.statusText}`);
-		}
-		return response.json();
+		const fetcher = new FetchHandler(
+			() => this.fetch(`${this.apiBaseUrl}${filledEndpoint}`, fetchParams),
+			this.retryTimes,
+			this.logging,
+		);
+		return await fetcher.fetch();
 	}
 
 	private fillEndpointParams(endpoint: string, params: Record<string, string | number> = {}): string {
@@ -120,14 +188,6 @@ class APIFetcher {
 		}
 		const defaultBody = this.defaultParams[endpoint]?.body || {};
 		return { ...defaultBody, ...providedBody };
-	}
-
-	private logMethod(method: string, endpoint: string, body: any, response: any) {
-		console.log(`APIFetcher: ${method} ${endpoint}`);
-		if (body) {
-			console.log('body', body);
-		}
-		console.log('response', response.ok, response.status, response.statusText);
 	}
 }
 
@@ -153,6 +213,7 @@ export interface APIInfo {
 	defaultParams?: DefaultParams;
 	fetchAdapter?: (url: string, params: any) => Promise<any>;
 	logging?: boolean;
+	retryCount?: number;
 }
 
 type EndpointMethod = {
@@ -171,6 +232,7 @@ export default class API<EndpointEnum extends string | undefined = string> {
 			defaultParams: apiInfo.defaultParams,
 			fetchAdapter: apiInfo.fetchAdapter,
 			logging: apiInfo.logging,
+			retryTimes: apiInfo.retryCount,
 		});
 
 		// Automatically assign methods based on the endpoint names
