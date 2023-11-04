@@ -85,6 +85,17 @@ class APIFetcher {
 		}
 		const response = await this.fetch(`${this.apiBaseUrl}${filledEndpoint}`, fetchParams);
 		// console.log(response);
+		if (!response.ok) {
+			if (response.status === 429) {
+				const retryAfter = response.headers.get('Retry-After');
+				if (retryAfter) {
+					const retryAfterSeconds = parseInt(retryAfter, 10);
+					await new Promise((resolve) => setTimeout(resolve, retryAfterSeconds * 1001));
+					return this.fetchData({ endpoint, body, params, other });
+				}
+			}
+			throw new Error(`APIFetcher: ${response.status} ${response?.statusText}`);
+		}
 		return response.json();
 	}
 
