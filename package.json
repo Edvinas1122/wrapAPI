@@ -1,6 +1,6 @@
 {
   "name": "@edvinas1122/api_wrapper",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "class offering generating API endpoint fetch methods",
   "main": "dist/api_wrapper.js",
   "types": "dist/api_wrapper.d.ts",
