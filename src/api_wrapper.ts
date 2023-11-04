@@ -20,7 +20,6 @@ interface APIFetcherConfig {
 }
 
 class FetchHandler {
-	private data: any;
 	constructor(
 		private fetchMethod: () => Promise<any>,
 		private retryTimes: number,
@@ -28,9 +27,6 @@ class FetchHandler {
 	){}
 	
 	public async fetch(): Promise<any> {
-		if (this.data) {
-			return this.data;
-		}
 		const response = await this.fetchMethod();
 		if (this.logging) {
 			console.log('response', response);
