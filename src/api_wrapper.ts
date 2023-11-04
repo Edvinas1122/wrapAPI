@@ -15,6 +15,7 @@ interface APIFetcherConfig {
 	headers?: any;
 	endpoints: Endpoint[];
 	defaultParams?: DefaultParams;
+	logging?: boolean;
 }
 
 class APIFetcher {
@@ -24,6 +25,7 @@ class APIFetcher {
 	private	headers: any;
 	private	endpoints: Record<string, Endpoint>;
 	private defaultParams: DefaultParams;
+	private logging: boolean;
 
 	constructor({
 		apiBaseUrl = '',
@@ -32,7 +34,8 @@ class APIFetcher {
 		caching = false,
 		headers = {},
 		endpoints = [],
-		defaultParams = {}
+		defaultParams = {},
+		logging = false,
 	}: APIFetcherConfig) {
 		this.apiBaseUrl = apiBaseUrl;
 		this.fetch = fetchAdapter || this.fetchDefault;
@@ -44,6 +47,7 @@ class APIFetcher {
 				return map;
 			}, {});
 		this.defaultParams = defaultParams;
+		this.logging = logging;
 	}
 
 	private async fetchDefault(url: string, params: any): Promise<any> {
@@ -76,7 +80,6 @@ class APIFetcher {
 			headers: this.headers,
 			...other,
 		};
-		// console.log(requestBody);
 		if (theEndpoint.method !== 'GET' && requestBody) {
 			fetchParams = {
 				...fetchParams,
@@ -84,7 +87,9 @@ class APIFetcher {
 			};
 		}
 		const response = await this.fetch(`${this.apiBaseUrl}${filledEndpoint}`, fetchParams);
-		// console.log(response);
+		if (this.logging) {
+			this.logMethod(theEndpoint.method, filledEndpoint, requestBody, response);
+		}
 		if (!response.ok) {
 			if (response.status === 429) {
 				const retryAfter = response.headers.get('Retry-After');
@@ -116,6 +121,14 @@ class APIFetcher {
 		const defaultBody = this.defaultParams[endpoint]?.body || {};
 		return { ...defaultBody, ...providedBody };
 	}
+
+	private logMethod(method: string, endpoint: string, body: any, response: any) {
+		console.log(`APIFetcher: ${method} ${endpoint}`);
+		if (body) {
+			console.log('body', body);
+		}
+		console.log('response', response.ok, response.status, response.statusText);
+	}
 }
 
 interface Endpoint {
@@ -139,6 +152,7 @@ export interface APIInfo {
 	endpoints: Endpoint[];
 	defaultParams?: DefaultParams;
 	fetchAdapter?: (url: string, params: any) => Promise<any>;
+	logging?: boolean;
 }
 
 type EndpointMethod = {
@@ -156,6 +170,7 @@ export default class API<EndpointEnum extends string | undefined = string> {
 			endpoints: apiInfo.endpoints,
 			defaultParams: apiInfo.defaultParams,
 			fetchAdapter: apiInfo.fetchAdapter,
+			logging: apiInfo.logging,
 		});
 
 		// Automatically assign methods based on the endpoint names
